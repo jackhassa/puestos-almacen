@@ -259,7 +259,13 @@ export default function HomePage() {
   }
 
   useEffect(() => {
-    loadDashboard();
+    const timer = window.setTimeout(() => {
+      void loadDashboard();
+    }, 0);
+
+    return () => window.clearTimeout(timer);
+    // loadDashboard usa únicamente setters de React y el cliente Supabase estable.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   return (
@@ -481,6 +487,34 @@ export default function HomePage() {
               text="Consulta las reglas utilizadas por el motor de planificación."
             />
 
+            <ModuleCard
+              href="/terminal"
+              number="07"
+              title="Terminal operario"
+              text="Acceso de operarios mediante códigos de barras para iniciar jornada, cambiar tarea y pausas."
+            />
+
+            <ModuleCard
+              href="/configuracion/operativa"
+              number="08"
+              title="Configuración operativa"
+              text="Configura credenciales, carros, PCs fijos, terminales RF y códigos de ubicación."
+            />
+
+            <ModuleCard
+              href="/gestor"
+              number="09"
+              title="Panel del gestor"
+              text="Monitoriza en tiempo real Entradas, Picking y las mesas operativas."
+            />
+
+            <ModuleCard
+              href="/estadisticas"
+              number="10"
+              title="Estadísticas"
+              text="Analiza horas, pausas, productividad, Picking y Expedición por trabajador, puesto y periodo."
+            />
+
           </div>
 
         </section>
@@ -562,7 +596,7 @@ function StatusCard({
   alert?: boolean;
   info?: boolean;
 }) {
-  let cardClass =
+  const cardClass =
     "rounded-xl border bg-white p-5 shadow-sm";
 
   let borderClass =

@@ -2,6 +2,10 @@
 
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
+import {
+  ASSIGNMENT_LABELS,
+  type AssignmentCode,
+} from "@/lib/operational-types";
 
 import {
   getShiftForDate,
@@ -38,17 +42,6 @@ type Shift =
   | "morning"
   | "afternoon"
   | "night";
-
-type AssignmentCode =
-  | "mesa1"
-  | "mesa2"
-  | "mesa3"
-  | "mesa4"
-  | "entradas"
-  | "picking"
-  | "reinforcement_entradas"
-  | "reinforcement_picking"
-  | "pending_task";
 
 type Employee = {
   id: string;
@@ -175,27 +168,6 @@ const NIGHT_REQUIRED_POSITIONS:
     "mesa4",
     "mesa3",
   ];
-
-const ASSIGNMENT_LABELS: Record<
-  AssignmentCode,
-  string
-> = {
-  mesa1: "Mesa 1",
-  mesa2: "Mesa 2",
-  mesa3: "Mesa 3",
-  mesa4: "Mesa 4",
-  entradas: "Entradas",
-  picking: "Picking",
-
-  reinforcement_entradas:
-    "Refuerzo Entradas",
-
-  reinforcement_picking:
-    "Refuerzo Picking",
-
-  pending_task:
-    "Asignar tarea responsable",
-};
 
 function formatDateForInput(
   date: Date

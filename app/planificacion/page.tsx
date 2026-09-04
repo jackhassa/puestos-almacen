@@ -8,6 +8,10 @@ import {
 } from "react";
 
 import { supabase } from "@/lib/supabase";
+import {
+  ASSIGNMENT_LABELS,
+  type AssignmentCode,
+} from "@/lib/operational-types";
 
 type Employee = {
   id: string;
@@ -27,17 +31,6 @@ type ShiftChange = {
   notes: string | null;
 };
 
-type AssignmentCode =
-  | "mesa1"
-  | "mesa2"
-  | "mesa3"
-  | "mesa4"
-  | "entradas"
-  | "picking"
-  | "reinforcement_entradas"
-  | "reinforcement_picking"
-  | "pending_task";
-
 type DailyOverride = {
   id: string;
   employee_id: string;
@@ -53,24 +46,6 @@ const shiftLabels: Record<
   morning: "Mañana",
   afternoon: "Tarde",
   night: "Noche",
-};
-
-const assignmentLabels: Record<
-  AssignmentCode,
-  string
-> = {
-  mesa1: "Mesa 1",
-  mesa2: "Mesa 2",
-  mesa3: "Mesa 3",
-  mesa4: "Mesa 4",
-  entradas: "Entradas",
-  picking: "Picking",
-  reinforcement_entradas:
-    "Refuerzo Entradas",
-  reinforcement_picking:
-    "Refuerzo Picking",
-  pending_task:
-    "Asignar tarea responsable",
 };
 
 function todayText() {
@@ -665,7 +640,7 @@ export default function PlanificacionPage() {
       `${getEmployeeName(
         overrideEmployeeId
       )}: ${
-        assignmentLabels[
+        ASSIGNMENT_LABELS[
           assignmentCode
         ]
       } para el ${formatSpanishDate(
@@ -1133,6 +1108,10 @@ export default function PlanificacionPage() {
                       Picking
                     </option>
 
+                    <option value="montajes">
+                      Montajes
+                    </option>
+
                     <option value="mesa4">
                       Mesa 4
                     </option>
@@ -1376,7 +1355,7 @@ export default function PlanificacionPage() {
                         <td className="px-4 py-4">
                           <span className="rounded-lg bg-blue-50 px-3 py-2 text-sm font-semibold text-blue-700">
                             {
-                              assignmentLabels[
+                              ASSIGNMENT_LABELS[
                                 override.assignment_code
                               ]
                             }

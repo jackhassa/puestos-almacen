@@ -841,6 +841,12 @@ export default function ConfiguracionPage() {
                   text="Cambios puntuales entre mañana, tarde y noche."
                 />
 
+                <NavigationCard
+                  href="/configuracion/operativa"
+                  title="Operativa"
+                  text="Credenciales por código de barras y configuración de terminales."
+                />
+
               </div>
 
             </section>
