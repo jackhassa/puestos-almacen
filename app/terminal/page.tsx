@@ -37,7 +37,7 @@ type LoginInfo = {
 type WorkSession = {
   id: string;
   operational_date: string;
-  shift_code: "morning" | "afternoon" | "night";
+  shift_code: "morning" | "afternoon" | "night" | "montajes";
   planned_assignment_code: PlannedAssignmentCode;
   status: "working" | "break" | "completed";
   started_at: string;
@@ -145,7 +145,12 @@ type ShippingSummary = {
 
 type PlanningState = {
   operationalDate: string;
-  shiftCode: "morning" | "afternoon" | "night";
+  shiftCode:
+    | "morning"
+    | "afternoon"
+    | "night"
+    | "montajes"
+    | "responsible";
   plannedAssignmentCode: PlannedAssignmentCode;
   assignmentLabel: string;
   areaCode: OperationalAreaCode;
@@ -177,7 +182,9 @@ function localDateText() {
 function shiftLabel(shift: WorkSession["shift_code"] | PlanningState["shiftCode"]) {
   if (shift === "morning") return "Mañana";
   if (shift === "afternoon") return "Tarde";
-  return "Noche";
+  if (shift === "night") return "Noche";
+  if (shift === "montajes") return "Montajes";
+  return "Responsable de almacén";
 }
 
 function normalizeAreaScan(value: string): OperationalAreaCode | null {

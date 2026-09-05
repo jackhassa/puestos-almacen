@@ -16,7 +16,12 @@ import { OPERATIONAL_AREA_LABELS, type OperationalAreaCode } from "@/lib/operati
 import type { WorkShift } from "@/lib/shift-engine";
 import { supabase } from "@/lib/supabase";
 
-type ShiftCode = "morning" | "afternoon" | "night";
+type ShiftCode =
+  | "morning"
+  | "afternoon"
+  | "night"
+  | "montajes"
+  | "responsible";
 type LiveStatus = "working" | "break" | "available";
 type WorkforceStatus = LiveStatus | "not_started" | "finished" | "incident";
 type RealtimeStatus = "connecting" | "live" | "fallback" | "offline";
@@ -139,6 +144,8 @@ const SHIFT_LABELS: Record<ShiftCode, string> = {
   morning: "Mañana",
   afternoon: "Tarde",
   night: "Noche",
+  montajes: "Montajes",
+  responsible: "Responsable almacén",
 };
 
 const STATUS_LABELS: Record<WorkforceStatus, string> = {

@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable react-hooks/set-state-in-effect */
+
 import { useEffect, useState } from "react";
 import { supabase } from "@/lib/supabase";
 import {
@@ -41,7 +43,9 @@ import {
 type Shift =
   | "morning"
   | "afternoon"
-  | "night";
+  | "night"
+  | "montajes"
+  | "responsible";
 
 type Employee = {
   id: string;
@@ -50,7 +54,9 @@ type Employee = {
   shift_mode:
     | "rotating"
     | "morning_fixed"
-    | "night_fixed";
+    | "night_fixed"
+    | "montajes_fixed"
+    | "warehouse_responsible";
 
   rotation_group:
     | "A"
@@ -234,6 +240,14 @@ function shiftLabel(
     shift === "night"
   ) {
     return "Noche";
+  }
+
+  if (shift === "montajes") {
+    return "Montajes";
+  }
+
+  if (shift === "responsible") {
+    return "Responsable almacén";
   }
 
   return "—";
@@ -610,6 +624,20 @@ export default function HoyPage() {
 
     if (
       employee.shift_mode ===
+      "montajes_fixed"
+    ) {
+      return "montajes";
+    }
+
+    if (
+      employee.shift_mode ===
+      "warehouse_responsible"
+    ) {
+      return "responsible";
+    }
+
+    if (
+      employee.shift_mode ===
         "rotating" &&
       employee.rotation_group &&
       groupAJanuaryShift
@@ -658,6 +686,13 @@ export default function HoyPage() {
   function getActualShift(
     employee: Employee
   ): Shift | null {
+    if (
+      employee.shift_mode === "montajes_fixed" ||
+      employee.shift_mode === "warehouse_responsible"
+    ) {
+      return getScheduledShift(employee);
+    }
+
     const change =
       getShiftChange(
         employee.id
@@ -681,6 +716,13 @@ export default function HoyPage() {
   function hasRealShiftChange(
     employee: Employee
   ) {
+    if (
+      employee.shift_mode === "montajes_fixed" ||
+      employee.shift_mode === "warehouse_responsible"
+    ) {
+      return false;
+    }
+
     const change =
       getShiftChange(
         employee.id
@@ -710,8 +752,9 @@ export default function HoyPage() {
     employee: Employee
   ): Position | null {
     if (
-      employee.shift_mode ===
-      "morning_fixed"
+      employee.shift_mode === "morning_fixed" ||
+      employee.shift_mode === "montajes_fixed" ||
+      employee.shift_mode === "warehouse_responsible"
     ) {
       return null;
     }
@@ -1781,6 +1824,44 @@ export default function HoyPage() {
   const nightPlan =
     buildNightShift();
 
+  const montajesPlan: ShiftPlan = {
+    employees: employees
+      .filter(
+        (employee) =>
+          getActualShift(employee) === "montajes" &&
+          !absentIdsToday.includes(employee.id)
+      )
+      .map((employee) => ({
+        ...employee,
+        theoreticalPosition: null,
+        finalText: "Montajes",
+        changed: false,
+        isShiftChange: false,
+        isManualOverride: false,
+        scheduledShift: getScheduledShift(employee),
+      })),
+    uncoveredPositions: [],
+  };
+
+  const responsiblePlan: ShiftPlan = {
+    employees: employees
+      .filter(
+        (employee) =>
+          getActualShift(employee) === "responsible" &&
+          !absentIdsToday.includes(employee.id)
+      )
+      .map((employee) => ({
+        ...employee,
+        theoreticalPosition: null,
+        finalText: "Responsable de almacén",
+        changed: false,
+        isShiftChange: false,
+        isManualOverride: false,
+        scheduledShift: getScheduledShift(employee),
+      })),
+    uncoveredPositions: [],
+  };
+
   /*
    * INCORPORAMOS GESTOR
    * A LOS PUESTOS SIN CUBRIR.
@@ -2031,6 +2112,20 @@ export default function HoyPage() {
                 missingPosts={
                   nightMissing
                 }
+              />
+
+              <ShiftCard
+                title="Montajes · 05:45 - 13:45"
+                employees={montajesPlan.employees}
+                manager={null}
+                missingPosts={[]}
+              />
+
+              <ShiftCard
+                title="Responsable almacén · Sin control horario"
+                employees={responsiblePlan.employees}
+                manager={null}
+                missingPosts={[]}
               />
 
             </div>

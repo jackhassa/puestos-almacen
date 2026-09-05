@@ -22,12 +22,22 @@ import {
 } from "./shift-engine";
 import { countWorkingDays } from "./workday-engine";
 
-export type OperationalShift = "morning" | "afternoon" | "night";
+export type OperationalShift =
+  | "morning"
+  | "afternoon"
+  | "night"
+  | "montajes"
+  | "responsible";
 
 export type PlanningEmployee = {
   id: string;
   name: string;
-  shift_mode: "rotating" | "morning_fixed" | "night_fixed";
+  shift_mode:
+    | "rotating"
+    | "morning_fixed"
+    | "night_fixed"
+    | "montajes_fixed"
+    | "warehouse_responsible";
   rotation_group: "A" | "B" | null;
   manager_type: "none" | "afternoon_pool" | "morning_fixed";
   rotation_reference_date: string | null;
@@ -127,6 +137,8 @@ export function buildDailyPlanning(
   ): OperationalShift | null => {
     if (employee.shift_mode === "morning_fixed") return "morning";
     if (employee.shift_mode === "night_fixed") return "night";
+    if (employee.shift_mode === "montajes_fixed") return "montajes";
+    if (employee.shift_mode === "warehouse_responsible") return "responsible";
 
     if (employee.shift_mode === "rotating" && employee.rotation_group) {
       return getShiftForDate(
@@ -149,6 +161,14 @@ export function buildDailyPlanning(
     employee: PlanningEmployee,
   ): OperationalShift | null => {
     const scheduled = getScheduledShift(employee);
+
+    if (
+      employee.shift_mode === "montajes_fixed" ||
+      employee.shift_mode === "warehouse_responsible"
+    ) {
+      return scheduled;
+    }
+
     const change = getShiftChange(employee.id);
 
     if (change && change.target_shift !== scheduled) {
@@ -159,6 +179,13 @@ export function buildDailyPlanning(
   };
 
   const hasRealShiftChange = (employee: PlanningEmployee) => {
+    if (
+      employee.shift_mode === "montajes_fixed" ||
+      employee.shift_mode === "warehouse_responsible"
+    ) {
+      return false;
+    }
+
     const change = getShiftChange(employee.id);
     return Boolean(change && change.target_shift !== getScheduledShift(employee));
   };
@@ -166,7 +193,11 @@ export function buildDailyPlanning(
   const getTheoreticalPosition = (
     employee: PlanningEmployee,
   ): Position | null => {
-    if (employee.shift_mode === "morning_fixed") return null;
+    if (
+      employee.shift_mode === "morning_fixed" ||
+      employee.shift_mode === "montajes_fixed" ||
+      employee.shift_mode === "warehouse_responsible"
+    ) return null;
     if (!employee.rotation_reference_date || !employee.rotation_reference_position) {
       return null;
     }
@@ -427,6 +458,15 @@ export function buildDailyPlanning(
   buildNormalShift("afternoon");
   buildNightShift();
 
+  for (const employee of employees) {
+    if (
+      employee.shift_mode === "montajes_fixed" &&
+      !absentIds.has(employee.id)
+    ) {
+      assigned.set(employee.id, "montajes");
+    }
+  }
+
   if (morningManagerId) assigned.set(morningManagerId, "gestor");
   if (afternoonManagerId) assigned.set(afternoonManagerId, "gestor");
 
@@ -444,10 +484,15 @@ export function buildDailyPlanning(
           ? assignmentCodeToOperationalArea(code)
           : null;
 
+    const responsibleUncontrolled =
+      employee.shift_mode === "warehouse_responsible";
+
     let reason: string | null = null;
     if (nonWorking) reason = "Hoy está configurado como día no laborable.";
     else if (absent) reason = "Constas como ausente en la planificación de hoy.";
-    else if (!actualShift) reason = "No tienes un turno operativo asignado para hoy.";
+    else if (responsibleUncontrolled) {
+      reason = "Responsable de almacén: puesto sin control horario operativo.";
+    } else if (!actualShift) reason = "No tienes un turno operativo asignado para hoy.";
     else if (!code || code === "pending_task") {
       reason = "El responsable debe asignarte un puesto concreto antes de iniciar.";
     } else if (!areaCode) {
@@ -462,9 +507,11 @@ export function buildDailyPlanning(
       actualShift,
       absent,
       assignmentCode: code,
-      assignmentLabel: assignmentLabel(code),
+      assignmentLabel: responsibleUncontrolled
+        ? "Responsable de almacén"
+        : assignmentLabel(code),
       areaCode,
-      canStart: reason === null,
+      canStart: !responsibleUncontrolled && reason === null,
       reason,
     };
   });

@@ -1,5 +1,7 @@
 "use client";
 
+/* eslint-disable react-hooks/set-state-in-effect */
+
 import {
   ChangeEvent,
   FormEvent,
@@ -14,7 +16,9 @@ import { supabase } from "@/lib/supabase";
 type ShiftMode =
   | "rotating"
   | "morning_fixed"
-  | "night_fixed";
+  | "night_fixed"
+  | "montajes_fixed"
+  | "warehouse_responsible";
 
 type ManagerType =
   | "none"
@@ -52,6 +56,8 @@ type Filter =
   | "B"
   | "morning"
   | "night"
+  | "montajes"
+  | "responsible"
   | "inactive";
 
 const normalPositions: {
@@ -204,6 +210,22 @@ export default function PersonalPage() {
       );
     }
 
+    if (filter === "montajes") {
+      return employees.filter(
+        (employee) =>
+          employee.active &&
+          employee.shift_mode === "montajes_fixed"
+      );
+    }
+
+    if (filter === "responsible") {
+      return employees.filter(
+        (employee) =>
+          employee.active &&
+          employee.shift_mode === "warehouse_responsible"
+      );
+    }
+
     return employees.filter(
       (employee) => !employee.active
     );
@@ -296,6 +318,15 @@ export default function PersonalPage() {
     if (value === "rotating") {
       setReferencePosition("mesa1");
     }
+
+    if (
+      value === "montajes_fixed" ||
+      value === "warehouse_responsible"
+    ) {
+      setReferenceDate("");
+      setReferencePosition("mesa1");
+      setAfternoonManager(false);
+    }
   }
 
   async function handleSubmit(
@@ -310,7 +341,8 @@ export default function PersonalPage() {
     }
 
     if (
-      shiftMode !== "morning_fixed" &&
+      (shiftMode === "rotating" ||
+        shiftMode === "night_fixed") &&
       !referenceDate
     ) {
       setMessage(
@@ -345,13 +377,15 @@ export default function PersonalPage() {
             : null,
         manager_type: managerType,
         rotation_reference_date:
-          shiftMode === "morning_fixed"
-            ? null
-            : referenceDate,
+          shiftMode === "rotating" ||
+          shiftMode === "night_fixed"
+            ? referenceDate
+            : null,
         rotation_reference_position:
-          shiftMode === "morning_fixed"
-            ? null
-            : referencePosition,
+          shiftMode === "rotating" ||
+          shiftMode === "night_fixed"
+            ? referencePosition
+            : null,
         active: true,
       })
       .select("id")
@@ -467,6 +501,15 @@ export default function PersonalPage() {
         setEditReferencePosition("mesa1");
       }
     }
+
+    if (
+      value === "montajes_fixed" ||
+      value === "warehouse_responsible"
+    ) {
+      setEditReferenceDate("");
+      setEditReferencePosition("mesa1");
+      setEditAfternoonManager(false);
+    }
   }
 
   async function saveEdit() {
@@ -478,7 +521,8 @@ export default function PersonalPage() {
     }
 
     if (
-      editShiftMode !== "morning_fixed" &&
+      (editShiftMode === "rotating" ||
+        editShiftMode === "night_fixed") &&
       !editReferenceDate
     ) {
       setMessage(
@@ -535,14 +579,16 @@ export default function PersonalPage() {
         manager_type: managerType,
 
         rotation_reference_date:
-          editShiftMode === "morning_fixed"
-            ? null
-            : editReferenceDate,
+          editShiftMode === "rotating" ||
+          editShiftMode === "night_fixed"
+            ? editReferenceDate
+            : null,
 
         rotation_reference_position:
-          editShiftMode === "morning_fixed"
-            ? null
-            : editReferencePosition,
+          editShiftMode === "rotating" ||
+          editShiftMode === "night_fixed"
+            ? editReferencePosition
+            : null,
 
         photo_url: photoUrl,
       })
@@ -807,6 +853,14 @@ export default function PersonalPage() {
                 <option value="night_fixed">
                   Noche fija
                 </option>
+
+                <option value="montajes_fixed">
+                  Montajes · 05:45 - 13:45
+                </option>
+
+                <option value="warehouse_responsible">
+                  Responsable de almacén · Sin control horario
+                </option>
               </select>
             </div>
 
@@ -854,7 +908,8 @@ export default function PersonalPage() {
               </div>
             )}
 
-            {shiftMode !== "morning_fixed" && (
+            {(shiftMode === "rotating" ||
+              shiftMode === "night_fixed") && (
               <>
                 <div>
                   <label className="mb-2 block text-sm font-medium">
@@ -1002,6 +1057,14 @@ export default function PersonalPage() {
                   <option value="night_fixed">
                     Noche fija
                   </option>
+
+                  <option value="montajes_fixed">
+                    Montajes · 05:45 - 13:45
+                  </option>
+
+                  <option value="warehouse_responsible">
+                    Responsable de almacén · Sin control horario
+                  </option>
                 </select>
               </div>
 
@@ -1051,7 +1114,8 @@ export default function PersonalPage() {
                 </div>
               )}
 
-              {editShiftMode !== "morning_fixed" && (
+              {(editShiftMode === "rotating" ||
+                editShiftMode === "night_fixed") && (
                 <>
                   <div>
                     <label className="mb-2 block text-sm font-medium">
@@ -1190,6 +1254,14 @@ export default function PersonalPage() {
                 Noche fija
               </option>
 
+              <option value="montajes">
+                Montajes
+              </option>
+
+              <option value="responsible">
+                Responsable de almacén
+              </option>
+
               <option value="inactive">
                 Eliminados
               </option>
@@ -1276,13 +1348,15 @@ export default function PersonalPage() {
                       </td>
 
                       <td className="px-4 py-4">
-                        {employee.shift_mode ===
-                        "rotating"
+                        {employee.shift_mode === "rotating"
                           ? "Rotativo"
-                          : employee.shift_mode ===
-                            "morning_fixed"
-                          ? "Mañana fija"
-                          : "Noche fija"}
+                          : employee.shift_mode === "morning_fixed"
+                            ? "Mañana fija"
+                            : employee.shift_mode === "night_fixed"
+                              ? "Noche fija"
+                              : employee.shift_mode === "montajes_fixed"
+                                ? "Montajes 05:45-13:45"
+                                : "Responsable almacén"}
                       </td>
 
                       <td className="px-4 py-4">
