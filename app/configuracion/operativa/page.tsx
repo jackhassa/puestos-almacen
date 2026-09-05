@@ -213,7 +213,13 @@ export default function OperationalConfigurationPage() {
     setTerminalType(terminal.terminal_type);
     setFixedArea(terminal.fixed_area_code ?? "mesa1");
     setTerminalActive(terminal.active);
-    window.scrollTo({ top: 0, behavior: "smooth" });
+    setMessage("");
+
+    window.setTimeout(() => {
+      document
+        .getElementById("terminal-editor")
+        ?.scrollIntoView({ behavior: "smooth", block: "center" });
+    }, 50);
   }
 
   function clearTerminalForm() {
@@ -335,7 +341,7 @@ export default function OperationalConfigurationPage() {
     try {
       const { error } = await supabase.rpc("warehouse_admin_set_cart_cubetas_open", {
         target_cart_id: cart.id,
-        target_is_cubetas: !cart.is_cubetas,
+        target_cubetas: !cart.is_cubetas,
       });
       if (error) throw new Error(error.message);
       await loadSetup();
@@ -690,7 +696,28 @@ export default function OperationalConfigurationPage() {
           <button className="rounded-xl border border-slate-300 px-4 py-3 text-sm font-bold" disabled={busy} onClick={() => void createTypicalTerminals()} type="button">CREAR TERMINALES HABITUALES</button>
         </div>
 
-        <div className="mt-6 grid gap-3 md:grid-cols-2 lg:grid-cols-6">
+        {terminalId ? (
+          <div className="mt-6 rounded-2xl border-2 border-blue-300 bg-blue-50 px-5 py-4">
+            <p className="text-sm font-black uppercase tracking-wider text-blue-700">
+              Editando terminal
+            </p>
+            <p className="mt-1 text-xl font-black text-slate-950">
+              {terminalName || terminalCode}
+            </p>
+            <p className="mt-1 text-sm text-slate-600">
+              Modifica código, nombre, tipo, puesto o estado y pulsa GUARDAR.
+            </p>
+          </div>
+        ) : null}
+
+        <div
+          className={`mt-4 grid gap-3 rounded-2xl md:grid-cols-2 lg:grid-cols-6 ${
+            terminalId
+              ? "border-2 border-blue-300 bg-blue-50 p-4"
+              : "mt-6"
+          }`}
+          id="terminal-editor"
+        >
           <input className="rounded-xl border p-3 lg:col-span-1" onChange={(event) => setTerminalCode(event.target.value.toUpperCase())} placeholder="Código" value={terminalCode} />
           <input className="rounded-xl border p-3 lg:col-span-2" onChange={(event) => setTerminalName(event.target.value)} placeholder="Nombre" value={terminalName} />
           <select className="rounded-xl border p-3" onChange={(event) => setTerminalType(event.target.value as "fixed_pc" | "rf")} value={terminalType}>
@@ -724,7 +751,17 @@ export default function OperationalConfigurationPage() {
               </p>
               <div className="mt-4 flex gap-2">
                 <Link className="rounded-lg bg-slate-900 px-3 py-2 text-sm font-bold text-white" href={`/terminal?terminal=${encodeURIComponent(terminal.code)}`} target="_blank">ABRIR</Link>
-                <button className="rounded-lg border px-3 py-2 text-sm font-bold" onClick={() => editTerminal(terminal)} type="button">EDITAR</button>
+                <button
+                  className={`rounded-lg border px-3 py-2 text-sm font-bold ${
+                    terminalId === terminal.id
+                      ? "border-blue-500 bg-blue-600 text-white"
+                      : "border-slate-300 bg-white text-slate-800"
+                  }`}
+                  onClick={() => editTerminal(terminal)}
+                  type="button"
+                >
+                  {terminalId === terminal.id ? "EDITANDO" : "EDITAR"}
+                </button>
               </div>
             </article>
           ))}
