@@ -25,6 +25,18 @@ type ShiftCode =
 type LiveStatus = "working" | "break" | "available";
 type WorkforceStatus = LiveStatus | "not_started" | "finished" | "incident";
 type RealtimeStatus = "connecting" | "live" | "fallback" | "offline";
+type ActionFeedback = {
+  kind: "success" | "error";
+  text: string;
+};
+type ManagerCartActionResult = {
+  cart_id: string;
+  code: string;
+  state: CartState;
+  priority_code: PriorityCode | null;
+  shipment_type: string | null;
+  queue_override: number | null;
+};
 type CartState =
   | "available"
   | "picking"
@@ -211,8 +223,8 @@ export default function ManagerPage() {
   const [planning, setPlanning] = useState<EmployeeDailyAssignment[]>([]);
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState("");
+  const [actionFeedback, setActionFeedback] = useState<ActionFeedback | null>(null);
   const [busyCartId, setBusyCartId] = useState<string | null>(null);
-  const [actorName, setActorName] = useState("");
   const [slaInput, setSlaInput] = useState("");
   const [stateFilter, setStateFilter] = useState<"all" | CartState>("all");
   const [priorityFilter, setPriorityFilter] = useState<"all" | PriorityCode>("all");
@@ -321,8 +333,6 @@ export default function ManagerPage() {
 
   useEffect(() => {
     const initialTimer = window.setTimeout(() => {
-      const storedActor = window.localStorage.getItem("warehouse-manager-actor");
-      if (storedActor) setActorName(storedActor);
       void refreshAll().finally(() => setLoading(false));
     }, 0);
 
@@ -400,46 +410,87 @@ export default function ManagerPage() {
     };
   }, [refreshAll, selectedDate]);
 
-  const saveActor = (value: string) => {
-    setActorName(value);
-    window.localStorage.setItem("warehouse-manager-actor", value);
-  };
-
-  const requireActorAndReason = () => {
-    const actor = actorName.trim();
-    if (!actor) {
-      setMessage("Indica primero el nombre del responsable que realiza la corrección.");
-      return null;
-    }
-
-    const reason = window.prompt("Motivo de la modificación:")?.trim();
-    if (!reason) return null;
-    return { actor, reason };
-  };
+  const getManagementToken = () =>
+    window.localStorage.getItem("warehouse-management-session-token");
 
   const runCartAction = async (
     cart: CartRow,
-    rpcName: string,
-    args: Record<string, unknown>,
+    action: string,
+    value: string | null,
     successMessage: string,
   ) => {
-    const context = requireActorAndReason();
-    if (!context) return;
+    const token = getManagementToken();
+
+    if (!token) {
+      setActionFeedback({
+        kind: "error",
+        text: "La sesión de Gestor no está disponible. Vuelve a iniciar sesión.",
+      });
+      return;
+    }
+
+    const reason = window.prompt("Motivo de la modificación:")?.trim();
+    if (!reason) return;
 
     setBusyCartId(cart.cart_id);
     setMessage("");
+    setActionFeedback(null);
+
     try {
-      const { error } = await supabase.rpc(rpcName, {
-        target_cart_id: cart.cart_id,
-        target_actor_name: context.actor,
-        target_reason: context.reason,
-        ...args,
-      });
+      const { data, error } = await supabase.rpc(
+        "warehouse_manager_apply_cart_action",
+        {
+          target_session_token: token,
+          target_cart_id: cart.cart_id,
+          target_action: action,
+          target_value: value,
+          target_reason: reason,
+        },
+      );
+
       if (error) throw new Error(error.message);
-      setMessage(successMessage);
+
+      const updated = data as ManagerCartActionResult | null;
+
+      if (!updated?.cart_id) {
+        throw new Error("La acción no ha devuelto el estado final del carro.");
+      }
+
+      setState((current) => {
+        if (!current) return current;
+
+        return {
+          ...current,
+          carts: current.carts.map((item) =>
+            item.cart_id === updated.cart_id
+              ? {
+                  ...item,
+                  state: updated.state,
+                  priority_code: updated.priority_code,
+                  shipment_type: updated.shipment_type,
+                  queue_override: updated.queue_override,
+                }
+              : item,
+          ),
+        };
+      });
+
+      setActionFeedback({
+        kind: "success",
+        text: successMessage,
+      });
+
       await loadControl(selectedDate, false);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : "No se ha podido realizar la acción.");
+      const text =
+        error instanceof Error
+          ? error.message
+          : "No se ha podido realizar la acción.";
+
+      setActionFeedback({
+        kind: "error",
+        text,
+      });
     } finally {
       setBusyCartId(null);
     }
@@ -449,8 +500,8 @@ export default function ManagerPage() {
     if ((cart.priority_code ?? "normal") === priority) return;
     await runCartAction(
       cart,
-      "warehouse_manager_set_cart_priority_open",
-      { target_priority: priority },
+      "priority",
+      priority,
       `Prioridad de ${cart.code} actualizada.`,
     );
   }
@@ -470,8 +521,8 @@ export default function ManagerPage() {
 
     await runCartAction(
       cart,
-      "warehouse_manager_set_cart_queue_position_open",
-      { target_position: position },
+      "queue",
+      position === null ? null : String(position),
       `Posición de cola de ${cart.code} actualizada.`,
     );
   }
@@ -485,8 +536,8 @@ export default function ManagerPage() {
 
     await runCartAction(
       cart,
-      "warehouse_manager_set_cart_shipment_type_open",
-      { target_shipment_type: value },
+      "shipment_type",
+      value,
       `Tipo de envío de ${cart.code} actualizado.`,
     );
   }
@@ -494,8 +545,8 @@ export default function ManagerPage() {
   async function unlockCart(cart: CartRow) {
     await runCartAction(
       cart,
-      "warehouse_manager_unlock_cart_open",
-      {},
+      "unlock",
+      null,
       `${cart.code} desbloqueado.`,
     );
   }
@@ -504,8 +555,8 @@ export default function ManagerPage() {
     if (!window.confirm(`¿Liberar ${cart.code} y dejarlo DISPONIBLE?`)) return;
     await runCartAction(
       cart,
-      "warehouse_manager_release_cart_open",
-      {},
+      "release",
+      null,
       `${cart.code} liberado.`,
     );
   }
@@ -514,8 +565,8 @@ export default function ManagerPage() {
     if (!window.confirm(`¿Devolver ${cart.code} a la cola de Expedición?`)) return;
     await runCartAction(
       cart,
-      "warehouse_manager_return_cart_to_queue_open",
-      {},
+      "return_to_queue",
+      null,
       `${cart.code} devuelto a PREPARADO.`,
     );
   }
@@ -524,8 +575,8 @@ export default function ManagerPage() {
     if (!window.confirm(`¿Cerrar manualmente la Expedición de ${cart.code}?`)) return;
     await runCartAction(
       cart,
-      "warehouse_manager_complete_shipping_open",
-      {},
+      "complete_shipping",
+      null,
       `Expedición de ${cart.code} cerrada por gestor.`,
     );
   }
@@ -538,11 +589,24 @@ export default function ManagerPage() {
       return;
     }
 
-    const { error } = await supabase.rpc("warehouse_manager_set_cart_sla_open", {
+    const token = getManagementToken();
+    if (!token) {
+      setActionFeedback({
+        kind: "error",
+        text: "La sesión de Gestor no está disponible. Vuelve a iniciar sesión.",
+      });
+      return;
+    }
+
+    const { error } = await supabase.rpc("warehouse_manager_set_cart_sla", {
+      target_session_token: token,
       target_minutes: minutes,
     });
     if (error) {
-      setMessage(error.message);
+      setActionFeedback({
+        kind: "error",
+        text: error.message,
+      });
       return;
     }
     setMessage(minutes ? `SLA configurado en ${minutes} minutos.` : "SLA desactivado.");
@@ -713,6 +777,27 @@ export default function ManagerPage() {
 
   return (
     <main className="min-h-screen bg-slate-100 p-4 md:p-8">
+      {actionFeedback ? (
+        <div
+          className={`fixed bottom-4 right-4 z-[120] max-w-md rounded-2xl border px-5 py-4 shadow-2xl ${
+            actionFeedback.kind === "success"
+              ? "border-emerald-300 bg-emerald-50 text-emerald-950"
+              : "border-red-300 bg-red-50 text-red-950"
+          }`}
+        >
+          <div className="flex items-start gap-4">
+            <p className="font-bold">{actionFeedback.text}</p>
+            <button
+              type="button"
+              className="text-sm font-black"
+              onClick={() => setActionFeedback(null)}
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      ) : null}
+
       <div className="mx-auto max-w-[1700px]">
         <header className="rounded-2xl bg-slate-950 p-6 text-white shadow-sm">
           <div className="flex flex-wrap items-start justify-between gap-5">
@@ -817,16 +902,10 @@ export default function ManagerPage() {
         <section className="mt-5 rounded-2xl bg-white p-5 shadow-sm">
           <div className="grid gap-4 lg:grid-cols-[1fr_auto] lg:items-end">
             <div>
-              <h2 className="text-xl font-black">Responsable y SLA</h2>
+              <h2 className="text-xl font-black">Gestión y SLA</h2>
               <p className="mt-1 text-sm text-slate-500">
-                Las modificaciones manuales guardan responsable, motivo, valor anterior y nuevo.
+                Las modificaciones quedan vinculadas al Gestor autenticado y siempre solicitan un motivo.
               </p>
-              <input
-                className="mt-3 w-full max-w-xl rounded-xl border p-3"
-                onChange={(event) => saveActor(event.target.value)}
-                placeholder="Nombre del responsable que realiza correcciones"
-                value={actorName}
-              />
             </div>
             <div className="flex flex-wrap items-end gap-2">
               <label className="text-sm font-bold text-slate-600">

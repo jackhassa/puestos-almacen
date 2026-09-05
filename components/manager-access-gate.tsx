@@ -2,6 +2,7 @@
 
 /* eslint-disable react-hooks/set-state-in-effect */
 
+import Link from "next/link";
 import { FormEvent, useEffect, useState, type ReactNode } from "react";
 import { usePathname } from "next/navigation";
 
@@ -207,6 +208,14 @@ export function ManagerAccessGate({ children }: { children: ReactNode }) {
         <span className="max-w-40 truncate font-semibold text-slate-700">
           {displayName}
         </span>
+        {pathname !== "/" ? (
+          <Link
+            href="/"
+            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 font-semibold text-slate-700"
+          >
+            Inicio
+          </Link>
+        ) : null}
         <button
           type="button"
           onClick={() => void logout()}
