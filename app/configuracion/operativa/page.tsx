@@ -418,6 +418,11 @@ export default function OperationalConfigurationPage() {
     [data.employees],
   );
 
+  const activeCarts = useMemo(
+    () => data.carts.filter((cart) => cart.active),
+    [data.carts],
+  );
+
   if (loading) {
     return <PageFrame>Cargando configuración operativa...</PageFrame>;
   }
@@ -584,7 +589,7 @@ export default function OperationalConfigurationPage() {
             </p>
           </div>
           <span className="rounded-full bg-slate-100 px-4 py-2 text-sm font-bold">
-            {data.carts.filter((cart) => cart.active).length} activos
+            {activeCarts.length} activos
           </span>
         </div>
 
@@ -620,8 +625,8 @@ export default function OperationalConfigurationPage() {
               </tr>
             </thead>
             <tbody>
-              {data.carts.length ? (
-                data.carts.map((cart) => (
+              {activeCarts.length ? (
+                activeCarts.map((cart) => (
                   <tr className="border-b last:border-0" key={cart.id}>
                     <td className="py-4 font-mono font-black">{cart.code}</td>
                     <td>{cartStateLabel(cart.state)}</td>

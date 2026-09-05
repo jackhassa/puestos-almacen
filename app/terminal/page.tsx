@@ -2,6 +2,7 @@
 
 /* eslint-disable react-hooks/set-state-in-effect */
 
+import Image from "next/image";
 import { Suspense, forwardRef, useEffect, useMemo, useRef, useState, type ForwardedRef, type ReactNode } from "react";
 import { useSearchParams } from "next/navigation";
 
@@ -935,7 +936,7 @@ function TerminalContent() {
             value={passwordCode}
           />
           <button
-            className="min-h-20 w-full rounded-2xl bg-slate-900 px-6 py-5 text-2xl font-black text-white disabled:opacity-40"
+            className="min-h-20 w-full rounded-2xl bg-[#e50046] px-6 py-5 text-2xl font-black text-white shadow-lg shadow-rose-200 transition hover:bg-[#c8003d] disabled:opacity-40"
             disabled={busy || !username.trim() || !passwordCode}
             onClick={() => void doLogin()}
             type="button"
@@ -1628,14 +1629,52 @@ function TerminalFrame({
   children: ReactNode;
 }) {
   return (
-    <main className="min-h-screen bg-slate-100 p-4 md:p-8">
+    <main className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 p-4 md:p-8">
       <div className="mx-auto max-w-6xl">
-        <header className="mb-6 rounded-3xl bg-slate-950 p-5 text-white md:p-7">
-          <p className="text-sm font-bold uppercase tracking-wider text-slate-400">Puestos Almacén · Terminal</p>
-          <h1 className="mt-1 text-3xl font-black md:text-4xl">{title}</h1>
-          {subtitle ? <p className="mt-2 text-lg text-slate-300">{subtitle}</p> : null}
+        <header className="mb-6 overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-lg shadow-slate-200/60">
+          <div className="h-2 bg-[#e50046]" />
+          <div className="flex flex-col gap-5 p-5 md:flex-row md:items-center md:justify-between md:p-7">
+            <div className="flex items-center gap-5">
+              <div className="flex min-w-0 items-center rounded-2xl bg-white p-2">
+                <Image
+                  alt="Circutor"
+                  className="h-auto w-44 object-contain md:w-60"
+                  height={71}
+                  priority
+                  src="/circutor-logo.png"
+                  width={260}
+                />
+              </div>
+              <div className="hidden h-14 w-px bg-slate-200 md:block" />
+              <div className="min-w-0">
+                <p className="text-xs font-black uppercase tracking-[0.22em] text-[#e50046]">
+                  Operativa de almacén
+                </p>
+                <h1 className="mt-1 truncate text-3xl font-black text-slate-950 md:text-4xl">
+                  {title}
+                </h1>
+                {subtitle ? (
+                  <p className="mt-1 text-base font-semibold text-slate-500 md:text-lg">
+                    {subtitle}
+                  </p>
+                ) : null}
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 self-start rounded-full bg-slate-100 px-4 py-2 text-xs font-black uppercase tracking-wider text-slate-600 md:self-center">
+              <span className="h-2.5 w-2.5 rounded-full bg-emerald-500" />
+              Terminal activo
+            </div>
+          </div>
         </header>
-        {children}
+
+        <div className="rounded-[2rem] border border-slate-200/80 bg-white/55 p-1 shadow-sm backdrop-blur-sm md:p-2">
+          {children}
+        </div>
+
+        <p className="mt-5 text-center text-xs font-semibold uppercase tracking-[0.16em] text-slate-400">
+          Circutor · Gestión operativa de almacén
+        </p>
       </div>
     </main>
   );
@@ -1654,11 +1693,13 @@ const ScanFieldBase = function ScanFieldBase(
   ref: ForwardedRef<HTMLInputElement>,
 ) {
   return (
-    <label className="block rounded-2xl bg-white p-5 shadow-sm">
-      <span className="mb-3 block text-lg font-black text-slate-800">{label}</span>
+    <label className="block rounded-3xl border border-slate-200 bg-white p-5 shadow-sm md:p-6">
+      <span className="mb-3 block text-sm font-black uppercase tracking-[0.12em] text-slate-600">
+        {label}
+      </span>
       <input
         autoComplete="off"
-        className="h-16 w-full rounded-xl border-2 border-slate-300 px-4 text-2xl font-bold outline-none focus:border-blue-600"
+        className="h-16 w-full rounded-2xl border-2 border-slate-200 bg-slate-50 px-4 text-2xl font-bold text-slate-950 outline-none transition focus:border-[#e50046] focus:bg-white focus:ring-4 focus:ring-rose-100"
         onChange={(event) => onValue(event.target.value)}
         onKeyDown={(event) => {
           if (event.key === "Enter") {

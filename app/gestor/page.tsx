@@ -754,6 +754,7 @@ export default function ManagerPage() {
   const filteredCarts = useMemo(() => {
     const operatorNeedle = operatorFilter.trim().toLocaleLowerCase("es");
     return (state?.carts ?? []).filter((cart) => {
+      if (!cart.active) return false;
       if (stateFilter !== "all" && cart.state !== stateFilter) return false;
       if (priorityFilter !== "all" && (cart.priority_code ?? "normal") !== priorityFilter) return false;
       if (
